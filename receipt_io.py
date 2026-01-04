@@ -12,6 +12,27 @@ from pathlib import Path
 from typing import Iterable, List, Tuple
 
 
+def normalize_uploaded_file(f) -> str:
+    """
+    Accepts Gradio upload values across versions and returns a filesystem path.
+
+    Handles:
+    - str filepath
+    - tempfile/NamedString with .name
+    - dict/FileData with keys like "path" or "name"
+    """
+
+    if f is None:
+        raise ValueError("No file uploaded")
+    if isinstance(f, str):
+        return f
+    if hasattr(f, "name") and isinstance(getattr(f, "name"), str):
+        return f.name
+    if isinstance(f, dict):
+        return f.get("path") or f.get("name") or f.get("orig_name")
+    raise TypeError(f"Unsupported upload type: {type(f)} => {f!r}")
+
+
 PNG_EXTENSIONS = {".png", ".PNG"}
 
 
