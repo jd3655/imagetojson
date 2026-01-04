@@ -17,6 +17,7 @@ from receipt_io import (
     build_outputs_zip,
     discover_receipts,
     encode_image_to_data_url,
+    normalize_uploaded_file,
     prepare_workdir,
     safe_extract_zip,
     write_output,
@@ -28,9 +29,13 @@ def load_zip(zip_file: gr.File) -> Tuple[List[List[str | int]], str, List[Receip
     if zip_file is None:
         raise gr.Error("Please upload a ZIP file containing receipts.")
 
+    zip_path = normalize_uploaded_file(zip_file)
+    if not zip_path or not Path(zip_path).is_file():
+        raise gr.Error("Please upload a ZIP file containing receipts.")
+
     tempdir_path = prepare_workdir()
     try:
-        safe_extract_zip(zip_file.name, tempdir_path)
+        safe_extract_zip(zip_path, tempdir_path)
         receipts = discover_receipts(tempdir_path)
         if not receipts:
             raise gr.Error("No receipt folders with PNG pages were found in the ZIP.")
@@ -71,6 +76,8 @@ def convert_selected(tempdir: str, selected: List[str], output_format: str) -> T
     if not tempdir:
         raise gr.Error("Upload a ZIP first.")
     receipts = discover_receipts(tempdir)
+    if not receipts:
+        raise gr.Error("No receipts found. Please re-upload the ZIP.")
     if not selected:
         raise gr.Error("Select at least one receipt.")
 
@@ -93,12 +100,12 @@ def convert_selected(tempdir: str, selected: List[str], output_format: str) -> T
 
 def preview_receipt(tempdir: str, selected: List[str]):
     if not tempdir or not selected:
-        return None
+        return []
     receipts = discover_receipts(tempdir)
     receipt_map = {r.name: r for r in receipts}
     receipt = receipt_map.get(selected[0]) if selected else None
     if not receipt:
-        return None
+        return []
     return [str(p) for p in receipt.pages]
 
 
@@ -128,7 +135,9 @@ def build_ui() -> gr.Blocks:
 
         def on_upload(file):
             table_data, tempdir, receipts, msg = load_zip(file)
-            return table_data, [r.name for r in receipts], tempdir, msg
+            receipt_names = [r.name for r in receipts]
+            checkbox_update = gr.update(choices=receipt_names, value=[])
+            return table_data, checkbox_update, tempdir, msg
 
         zip_file.upload(
             on_upload,
@@ -137,7 +146,8 @@ def build_ui() -> gr.Blocks:
         )
 
         def on_select(tempdir, selected_names):
-            return preview_receipt(tempdir, selected_names)
+            images = preview_receipt(tempdir, selected_names)
+            return images or []
 
         selected.change(on_select, inputs=[tempdir_state, selected], outputs=gallery)
 
@@ -156,6 +166,8 @@ def build_ui() -> gr.Blocks:
             if not tempdir:
                 raise gr.Error("Upload a ZIP first.")
             receipts = discover_receipts(tempdir)
+            if not receipts:
+                raise gr.Error("No receipts found. Please re-upload the ZIP.")
             names = [r.name for r in receipts]
             return run_conversion(tempdir, names, fmt)
 
@@ -170,4 +182,4 @@ def build_ui() -> gr.Blocks:
 
 if __name__ == "__main__":
     demo = build_ui()
-    demo.launch()
+    demo.launch(debug=True)
