@@ -13,6 +13,7 @@ Use this layout:
 ## Totals
 - Subtotal: numeric or blank
 - Tax: numeric or blank
+- Shipping/Freight: numeric or blank; treat shipping and freight as the same charge
 - Tip: numeric or blank
 - Total: numeric or blank
 - Payment method: card/cash/etc. if present
@@ -26,7 +27,7 @@ Additional notes or disclaimers; if none, leave blank.
 
 
 JSON_INSTRUCTION = """
-Extract structured data from a receipt or invoice that may span multiple pages. Preserve reading order across pages. Do not hallucinate missing fields; use nulls for missing data. Return ONLY a valid JSON object, no markdown, no backticks.
+Extract structured data from a receipt or invoice that may span multiple pages. Preserve reading order across pages. Do not hallucinate missing fields; use nulls for missing data. Treat shipping and freight as the same charge under the "shipping" field. Return ONLY a valid JSON object, no markdown, no backticks.
 Schema:
 {{
   "document_name": string,
@@ -42,6 +43,7 @@ Schema:
   "currency": string|null,
   "subtotal": number|null,
   "tax": number|null,
+  "shipping": number|null,
   "tip": number|null,
   "total": number|null,
   "payment_method": string|null,
@@ -67,4 +69,3 @@ Schema:
 JSON_REPAIR_PROMPT = """
 The previous response was not valid JSON. Return ONLY valid JSON that conforms to the requested schema. Do not include explanations or markdown.
 """.strip()
-
